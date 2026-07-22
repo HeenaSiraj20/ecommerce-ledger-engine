@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum LedgerAccount {
+  CASH
+  REVENUE
+  REFUNDS_PAYABLE
+  INVENTORY
+}
+
+enum EntryType {
+  DEBIT
+  CREDIT
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(CUSTOMER)
+  orders       Order[]
+  createdAt    DateTime @default(now())
+}
+
+model Product {
+  id            String      @id @default(uuid())
+  name          String
+  description   String?
+  priceCents    Int
+  stockQuantity Int
+  orderItems    OrderItem[]
+  createdAt     DateTime    @default(now())
+}
+
+model Order {
+  id                 String        @id @default(uuid())
+  userId             String
+  user               User          @relation(fields: [userId], references: [id])
+  status             OrderStatus   @default(PENDING)
+  totalAmountCents   Int
+  idempotencyKey     String        @unique
+  items              OrderItem[]
+  ledgerEntries      LedgerEntry[]
+  createdAt          DateTime      @default(now())
+}
+
+model OrderItem {
+  id              String   @id @default(uuid())
+  orderId         String
+  productId       String
+  quantity        Int
+  unitPriceCents  Int
+
+  order           Order    @relation(fields: [orderId], references: [id])
+  product         Product  @relation(fields: [productId], references: [id])
+}
+
+model LedgerEntry {
+  id          String        @id @default(uuid())
+  orderId     String
+  order       Order         @relation(fields: [orderId], references: [id])
+  account     LedgerAccount
+  entryType   EntryType
+  amountCents Int
+  description String?
+  createdAt   DateTime      @default(now())
+}
